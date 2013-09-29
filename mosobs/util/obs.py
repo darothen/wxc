@@ -3,6 +3,7 @@ import numpy as np
 import datetime
 from pandas import *
 from pylab import *
+from mos import download_file, data_path
 ion()
 
 ## Pre-defined flags
@@ -13,6 +14,54 @@ STATIONS = { 'ksdf': 'LOUISVILLE INTERNATIONAL AIRPORT KY US',
 
 # 1 day timedelta
 ONE_DAY = datetime.timedelta(days=1)
+
+def get_OBS(station, years):
+    print "Downloading OBS data for", station
+    #years = range(2009, 2012)
+    months = range(1, 13)
+
+    for (year, month) in itertools.product(years, months):
+        link = "http://www.mdl.nws.noaa.gov/~mos/archives/etamet/met%4d%02d.Z" % (year, month)
+        print link
+        ## Download file
+        temp_file_name = link.split("/")[-1]
+
+        full_path = os.path.join(data_path, station, "NAM")
+        ## Make the path to store the data
+        if not os.path.exists(full_path):
+            print "Creating", full_path
+            os.makedirs(full_path)
+        full_fn = os.path.join(data_path, temp_file_name)
+
+        if not os.path.exists(full_fn):
+            try:
+                download_file(link, full_fn)
+                print "done"
+            except HTTPError, e:
+                print "...resource not found. Skipping."
+                continue
+
+            ## Uncompress file
+            subprocess.call(["uncompress", full_fn])
+        uncomp_fn = full_fn[:-2] # trim the ".Z"
+
+        f = open(uncomp_fn)
+
+        sh = station_headers(f, station, "NAM")
+        for mos_lines in sh:
+
+            station_id, _, _, _, run_date, run_time, _ = mos_lines[0].split()
+            fcst_time = int(run_time)/100
+            rd_month, rd_day, rd_year = map(int, run_date.split("/"))
+            mos_filename = "%s.%02d%02d%4d.NAM-MET.%02dZ" % (station_id, rd_month, rd_day, rd_year, fcst_time)
+
+            print mos_filename
+            new_f = open("data_arch/%s/NAM/%s" % (station_id, mos_filename), 'wb')
+            new_f.writelines(mos_lines)
+            new_f.close()
+
+        f.close()
+        os.remove(uncomp_fn)
 
 def parse_mos(filename):
     """Right now, will only strip out min/max temps for 0-day forecast
