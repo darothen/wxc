@@ -9,7 +9,7 @@ import os, sys, subprocess, re, datetime
 
 import numpy as np
 
-import pandas
+import pandas as pd
 
 full_model_name = { 'NAM': "NAM-MET", "GFS": "GFS-MAV" }
 months = {"JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUNE":6,
@@ -231,7 +231,7 @@ def process_MOS(lines):
         timestamp = datetime.datetime(cd.year, cd.month, cd.day, hour)
         proc_timestamps.append(timestamp)
 
-    df = pandas.DataFrame(other_data, index=proc_timestamps)
+    df = pd.DataFrame(other_data, index=proc_timestamps)
     df.meta = meta
 
     ## Map the max/mins to their appropriate dates, as well as the
