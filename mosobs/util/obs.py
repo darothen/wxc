@@ -4,6 +4,7 @@ import datetime
 import os
 from pandas import *
 from pylab import *
+from urllib2 import HTTPError
 from mos import download_file, data_path
 ion()
 
@@ -24,15 +25,19 @@ def code_from_station(station):
     return STATION_CODES[station.lower()]
 
 def fetch_OBS(station, update='True'):
+    '''Script for downloading the observations for the station and 
+    archiving them in a subdirctory of the data_path defined by the 
+    other utils.
+    
+    ATMo only works for stations who have an ID translation in the 
+    STATION_CODES dictionary above'''
+    
     print "Downloading OBS data for", station
-
-    station_code = code_from_station(station)
-
+    station_code = code_from_station(station) # switching ID systems
     link = "ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily/all/%s.dly" % (station_code)
-    print link
+
     ## Download file
     temp_file_name = link.split("/")[-1]
-
     full_path = os.path.join(data_path, station, "OBS")
     ## Make the path to store the data
     if not os.path.exists(full_path):
@@ -48,12 +53,14 @@ def fetch_OBS(station, update='True'):
             print "...resource not found. Skipping."
 
     f = open(full_fn)
+    
+    ## Put data in archivable format
     obs_data = {'TMAX':{'t':[],'data':[]},
                 'TMIN':{'t':[],'data':[]},
                 'PRCP':{'t':[],'data':[]}
                 }
     for line in f.readlines():
-        yyyy = line[11:15]
+        yyyy = line[11:15] #file formatted particularly by text line, column
         mm = line[15:17]
         var_id = line[17:21]
         if var_id in obs_data.keys():
@@ -63,17 +70,15 @@ def fetch_OBS(station, update='True'):
                     dt = datetime.datetime(int(yyyy),int(mm),int(d))
                 except ValueError:
                     break
-                if not (dt in obs_data[var_id]['t']):
-                    obs_data[var_id]['t'].append(dt)
+                obs_data[var_id]['t'].append(dt)
                 obs_data[var_id]['data'].append(rest[d*8:d*8+5])
-    for i in obs_data:
-        print i,len(obs_data[i]['t']),len(obs_data[i]['data'])
     f.close()
     
+    ## archive data by variable ID
     for var_id in obs_data:
         df = DataFrame(obs_data[var_id])
         df.to_csv(os.path.join(full_path,'%s.csv') %(var_id) )
-
+    ## FIN
 
 def parse_mos(filename):
     """Right now, will only strip out min/max temps for 0-day forecast
