@@ -71,7 +71,8 @@ def fetch_OBS(station, update='True'):
                 except ValueError:
                     break
                 obs_data[var_id]['t'].append(dt)
-                obs_data[var_id]['data'].append(rest[d*8:d*8+5])
+                obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*0.1)
+                # to deg C and mm
     f.close()
     
     ## archive data by variable ID
