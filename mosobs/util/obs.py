@@ -55,31 +55,34 @@ def fetch_OBS(station, update='True'):
     f = open(full_fn)
     
     ## Put data in archivable format
-    obs_data = {'TMAX':{'t':[],'data':[]},
-                'TMIN':{'t':[],'data':[]},
-                'PRCP':{'t':[],'data':[]}
+    obs_data = {'TMAX':{'t':[],'data':[], 'flags':[]},
+                'TMIN':{'t':[],'data':[], 'flags':[]},
+                'PRCP':{'t':[],'data':[], 'flags':[]}
                 }
     for line in f.readlines():
+        print line
         yyyy = line[11:15] #file formatted particularly by text line, column
         mm = line[15:17]
         var_id = line[17:21]
         if var_id in obs_data.keys():
             rest = line[21:]
-            for d in range(1,32):
+            for d in range(31):
                 try: 
-                    dt = datetime.datetime(int(yyyy),int(mm),int(d))
+                    dt = datetime.datetime(int(yyyy),int(mm),int(d+1))
                 except ValueError:
                     break
-                obs_data[var_id]['t'].append(dt)
-                obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*0.1)
+                obs_data[var_id]['t'].append(dt)                
                 # to deg C and mm
+                print rest[d*8:d*8+5],d
+                obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*0.1)
+                obs_data[var_id]['flags'].append(rest[d*8+5:d*8+8])
     f.close()
     
     ## archive data by variable ID
     for var_id in obs_data:
         df = DataFrame(obs_data[var_id])
         df.to_csv(os.path.join(full_path,'%s.csv') %(var_id) )
-    ## FIN
+
 
 def parse_mos(filename):
     """Right now, will only strip out min/max temps for 0-day forecast
