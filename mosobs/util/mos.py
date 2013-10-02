@@ -1,15 +1,18 @@
-'''
-Download and strip out MOS data from MDL archive
-'''
+"""Collection of utilities for downloading and processing MOS output.
 
-from urllib2 import urlopen, URLError, HTTPError
+"""
+
 from collections import OrderedDict
+from datetime import datetime, timedelta
 import itertools
-import os, sys, subprocess, re, datetime
+import os
+import re
+import subprocess
+import sys
+from urllib2 import urlopen, HTTPError
 
 import numpy as np
-
-import pandas
+import pandas as pd
 
 full_model_name = { 'NAM': "NAM-MET", "GFS": "GFS-MAV" }
 months = {"JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUNE":6,
@@ -19,6 +22,9 @@ months = {"JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUNE":6,
 data_path = "data_arch/"
 
 def reporthook(a,b,c):
+    """Custom download progress bar.
+
+    """
     # ',' at the end of the line is important!
     print "% 3.1f%% of %d bytes\r" % (min(100, float(a * b) / c * 100), c),
     #you can also use sys.stdout.write
@@ -27,6 +33,9 @@ def reporthook(a,b,c):
     sys.stdout.flush()
 
 def station_headers(mos_file, station_id, model="GFS"):
+    """Seek forward from block to block in compilation of MOS data.
+
+    """
     lines = mos_file.readlines()
     for i, line in enumerate(lines):
         if station_id in line:
@@ -36,12 +45,46 @@ def station_headers(mos_file, station_id, model="GFS"):
             yield lines[i:i_end]
 
 def download_file(url, local_filename):
+    """Convenience utility for downloading and saving a file to disk.
+
+    """
     print "downloading " + url,
     f = urlopen(url)
     with open(local_filename, "wb") as local_file:
         local_file.write(f.read())
 
 def get_NAM(station, years):
+    """Download NAM MOS output.
+
+    Queries the NWS MDL to download NAM MOS output (00Z and 12Z) 
+    for a given station over a specified range of years, and saves 
+    single-block outputs of each forecast locally. 
+
+    For example, to download all the NAM MOS forecasts from 2009 for
+    Lousville's Standiford Field forecast location, one can execute 
+    from an interactive Python session, 
+
+    >>> get_NAM("KSDF", [2009, ])
+    Downloading MOS data for KSDF
+    http://www.mdl.nws.noaa.gov/~mos/archives/etamet/met200901.Z 
+    Creating data_arch/KSDF/NAM
+    done
+    http://www.mdl.nws.noaa.gov/~mos/archives/etamet/met200902.Z 
+    ...
+
+    Parameters
+    ----------
+    station : string
+        Station identifier code
+    years : iterable of int
+        The calendar years of data to download
+
+    Raises
+    ------
+    HTTPError
+        If the requested data could not be downloaded.
+
+    """
     print "Downloading MOS data for", station
     #years = range(2009, 2012)
     months = range(1, 13)
@@ -89,7 +132,38 @@ def get_NAM(station, years):
         f.close()
         os.remove(uncomp_fn)
 
-def get_GFS(station, years):
+def get_GFS(station, years):    
+    """Download GFS MOS output.
+
+    Queries the NWS MDL to download GFS MOS output (00Z, 06Z, 12Z, 18Z) 
+    for a given station over a specified range of years, and saves 
+    single-block outputs of each forecast locally. 
+
+    For example, to download all the NAM MOS forecasts from 2009 for
+    Lousville's Standiford Field forecast location, one can execute 
+    from an interactive Python session, 
+
+    >>> get_GFS("KSDF", [2009, ])
+    Downloading MOS data for KSDF
+    http://www.mdl.nws.noaa.gov/~mos/archives/avnmav/mav200991.t00z.Z
+    Creating data_arch/KSDF/NAM
+    done
+    http://www.mdl.nws.noaa.gov/~mos/archives/avnmav/mav200991.t06z.Z
+    ...
+
+    Parameters
+    ----------
+    station : string
+        Station identifier code
+    years : iterable of int
+        The calendar years of data to download
+
+    Raises
+    ------
+    HTTPError
+        If the requested data could not be downloaded.
+
+    """
     print "Downloading MOS data for", station
     months = range(1, 13)
 
@@ -139,17 +213,30 @@ def get_GFS(station, years):
             os.remove(uncomp_fn)
 
 def process_MOS(lines):
-    ''' process a MOS block
+    """Process a block of MOS output.
 
-    This function should accept a list containing each line
-    in a MOS entry from GFS or NAM. It analyzes the header
-    of the MOS forecast to discover the forecast station and
-    forecast issuing time. Then, it strips all the Day 1 and
-    Day 2 forecast information out of the MOS entry.
+    This method converts a block of raw MOS output into a
+    timeseries format using a pandas DataFrame. It accepts
+    the raw, individual lines of MOS output (such as the contents
+    of a file written to disk by `get_NAM()`). The header of the block
+    is analyzed to format the indices of the timeseries, and then it strips
+    out Day 1 and Day 2 max/min/precip forecasts while preserving all
+    3-hourly forecast data.
 
-    In the future, capability of extracting Day 3 forecasts
-    for 12Z and 18Z forecasts might be added
-    '''
+    Parameters
+    ----------
+    lines : list of strings
+        Individual lines comprising a MOS block forecast
+
+    Returns
+    -------
+    pandas.DataFrame
+        MOS forecast
+
+    .. note:: The output has two special attributes, `maxmin` and `precip`
+        which contained processed Day 1 and Day 2 specific forecasts.
+
+    """
     lines = map(lambda x: x.strip(), lines)
 
     # Line 1 - header info
@@ -231,7 +318,7 @@ def process_MOS(lines):
         timestamp = datetime.datetime(cd.year, cd.month, cd.day, hour)
         proc_timestamps.append(timestamp)
 
-    df = pandas.DataFrame(other_data, index=proc_timestamps)
+    df = pd.DataFrame(other_data, index=proc_timestamps)
     df.meta = meta
 
     ## Map the max/mins to their appropriate dates, as well as the
@@ -266,6 +353,79 @@ def process_MOS(lines):
     df.precip = precip
 
     return df
+
+    full_model_name = { 'NAM': "NAM-MET", "GFS": "GFS-MAV" }
+    months = {"JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUNE":6,
+              "JULY":7, "AUG":8, "SEPT":9, "OCT":10, "NOV":11,
+              "DEC":12}
+    data_path = "data_arch/"
+
+    from datetime import datetime, timedelta
+    import itertools
+
+def concatenate_MOS(station, forecast_date, gfs=True, nam=True):
+    """ Concatenate MOS forecasts from GFS and NAM corresponding to
+    a given forecast date.
+    
+    Forecast period is implied to be 00Z on the forecast date to
+    00Z on the following day. This method will align the 00Z-18Z 
+    forecasts on the previous day to get a timeseries/snapshot of the
+    forecast for the forecast date. 
+    
+    Example usage:
+    
+    >>> forecast_date = datetime.strptime("2008-09-17", "%Y-%m-%d")
+    
+    Parameters
+    ----------
+    station : string
+        Station identifier code
+    forecast_date : datetime.datetime
+        The date corresponding to the 00z-00z forecast period
+    gfs, nam : boolean, optional
+        Logical switch on which model to include (both true by
+        default)
+    
+    Returns
+    -------
+    pandas.DataFrame
+        Aligned MOS forecasts
+        
+    """
+    mos_pattern = "%s.%02d%02d%4d.%s.%02dZ" # station, mm, dd, yyyy, model, hh
+    one_day = timedelta(days=1)
+    
+    ## Generate filenames of MOS data to read
+    model_date = forecast_date - one_day
+    md = model_date # alias
+    
+    hours = [0, 6, 12, 18]
+    models = []
+    if gfs: models.append("GFS")
+    if nam: models.append("NAM")
+    
+    combos = itertools.product(hours, models)
+    all_mos = {}
+    for hour, model in combos:
+        filename = mos_pattern % (station, md.month, md.day, md.year,
+                                  full_model_name[model], hour)
+        print "Processing", filename
+        
+        full_path = os.path.join(data_path, station, model, filename)
+        if not os.path.exists(full_path):
+            print "   could not find file; skipping"
+            continue
+            
+        model_fcst_date = datetime(md.year, md.month, md.day, hour)
+        with open(full_path, 'r') as f:
+            proc_mos = process_MOS(f.readlines())
+        
+        fcst_name = "%s%02dZ" % (model, hour)
+        all_mos[fcst_name] = proc_mos
+    
+    mos_panel = pd.Panel(all_mos)
+    
+    return mos_panel, all_mos
 
 if __name__ == "__main__":
     lines = open("data_arch/KAUS/GFS/KAUS.01012009.GFS-MAV.18Z", "r").readlines()
