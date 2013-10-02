@@ -30,7 +30,7 @@ def fetch_OBS(station, update='True'):
     other utils.
     
     ATMo only works for stations who have an ID translation in the 
-    STATION_CODES dictionary above'''
+    STATION_CODES dictionary'''
     
     print "Downloading OBS data for", station
     station_code = code_from_station(station) # switching ID systems
@@ -60,7 +60,6 @@ def fetch_OBS(station, update='True'):
                 'PRCP':{'t':[],'data':[], 'flags':[]}
                 }
     for line in f.readlines():
-        print line
         yyyy = line[11:15] #file formatted particularly by text line, column
         mm = line[15:17]
         var_id = line[17:21]
@@ -74,7 +73,11 @@ def fetch_OBS(station, update='True'):
                 obs_data[var_id]['t'].append(dt)                
                 # to deg C and mm
                 print rest[d*8:d*8+5],d
-                obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*0.1)
+                if var_id in ['TMAX', 'TMIN']:
+                    obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*\
+                                                0.1*(9./5.)+32.)
+                elif var_id == 'PRCP':
+                    obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*0.1)
                 obs_data[var_id]['flags'].append(rest[d*8+5:d*8+8])
     f.close()
     
@@ -84,6 +87,23 @@ def fetch_OBS(station, update='True'):
         df.to_csv(os.path.join(full_path,'%s.csv') %(var_id) )
 
 
+def get_OBS(station, variable_id):
+    '''Get the archived obs of variable_id type and return them as a DataFrame
+    for easy use.
+    e.g.  df = get_OBS('KHOU', 'TMAX')
+    '''
+
+    full_path = os.path.join(data_path, station, "OBS")
+    if not os.path.exists(full_path):
+        print 'No archived OBS data for this station'
+        return None
+    
+    df = read_csv(os.path.join(full_path,'%s.csv') %(variable_id) )
+    df = np.where(df.flags.values != '  0', np.NAN, df)
+    # format: index, temp, flag, datetime
+    return df
+    
+    
 def parse_mos(filename):
     """Right now, will only strip out min/max temps for 0-day forecast
 
@@ -112,7 +132,7 @@ def parse_mos(filename):
     tmax, tmin = map(int, minmaxes[1:3])
 
     return tmax, tmin
-
+    
 
 def parse_observations(filename, station_name=None):
     ## Use pandas' csv reader to quickly read the observational dataset into a
