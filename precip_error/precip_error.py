@@ -211,5 +211,3 @@ if __name__ == "__main__":
         print "   Expected penalty = %1.1f" % exp_penalty
 
         update_plots(fcst, obs)
-
-
