@@ -3,7 +3,7 @@
 """
 
 from collections import OrderedDict
-from datetime import datetime, timedelta
+import datetime
 import itertools
 import os
 import re
@@ -218,10 +218,13 @@ def process_MOS(lines):
     This method converts a block of raw MOS output into a
     timeseries format using a pandas DataFrame. It accepts
     the raw, individual lines of MOS output (such as the contents
-    of a file written to disk by `get_NAM()`). The header of the block
+    of a file written to disk by `get_NAM()`. The header of the block
     is analyzed to format the indices of the timeseries, and then it strips
     out Day 1 and Day 2 max/min/precip forecasts while preserving all
     3-hourly forecast data.
+
+    .. note:: The output has two special attributes, `maxmin` and `precip`
+        which contained processed Day 1 and Day 2 specific forecasts.
 
     Parameters
     ----------
@@ -233,8 +236,6 @@ def process_MOS(lines):
     pandas.DataFrame
         MOS forecast
 
-    .. note:: The output has two special attributes, `maxmin` and `precip`
-        which contained processed Day 1 and Day 2 specific forecasts.
 
     """
     lines = map(lambda x: x.strip(), lines)
@@ -354,15 +355,6 @@ def process_MOS(lines):
 
     return df
 
-    full_model_name = { 'NAM': "NAM-MET", "GFS": "GFS-MAV" }
-    months = {"JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUNE":6,
-              "JULY":7, "AUG":8, "SEPT":9, "OCT":10, "NOV":11,
-              "DEC":12}
-    data_path = "data_arch/"
-
-    from datetime import datetime, timedelta
-    import itertools
-
 def concatenate_MOS(station, forecast_date, gfs=True, nam=True):
     """ Concatenate MOS forecasts from GFS and NAM corresponding to
     a given forecast date.
@@ -416,7 +408,7 @@ def concatenate_MOS(station, forecast_date, gfs=True, nam=True):
             print "   could not find file; skipping"
             continue
             
-        model_fcst_date = datetime(md.year, md.month, md.day, hour)
+        model_fcst_date = datetime.datetime(md.year, md.month, md.day, hour)
         with open(full_path, 'r') as f:
             proc_mos = process_MOS(f.readlines())
         
