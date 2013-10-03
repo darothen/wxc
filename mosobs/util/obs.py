@@ -18,7 +18,11 @@ STATIONS = { 'ksdf': 'LOUISVILLE INTERNATIONAL AIRPORT KY US',
 ONE_DAY = datetime.timedelta(days=1)
 
 # NWSO location closest to each station?
-STATION_CODES = { 'khou': 'USC00414333'}
+STATION_CODES = { 'khou': 'USC00414333',
+                  'kcys': 'USC00481676',
+                  'nrmn': 'USC00346382', 
+                  'kgrr': 'USC00203337',
+                  }
 
 def code_from_station(station):
     # translate 4 letter station id to hcn code
@@ -70,14 +74,22 @@ def fetch_OBS(station, update='True'):
                     dt = datetime.datetime(int(yyyy),int(mm),int(d+1))
                 except ValueError:
                     break
-                obs_data[var_id]['t'].append(dt)                
-                # to deg C and mm
-                print rest[d*8:d*8+5],d
+                obs_data[var_id]['t'].append(dt)   
+                
                 if var_id in ['TMAX', 'TMIN']:
-                    obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*\
-                                                0.1*(9./5.)+32.)
+                    datum = float(rest[d*8:d*8+5])
+                    if datum == -9999.:
+                        obs_data[var_id]['data'].append(np.nan)
+                    else:
+                        # to deg C
+                        obs_data[var_id]['data'].append(datum*0.1*(9./5.)+32.)
                 elif var_id == 'PRCP':
-                    obs_data[var_id]['data'].append(float(rest[d*8:d*8+5])*0.1)
+                    datum = float(rest[d*8:d*8+5])
+                    if datum == -9999.:
+                        obs_data[var_id]['data'].append(np.nan)
+                    else:
+                        # to mm
+                        obs_data[var_id]['data'].append(datum*0.1)
                 obs_data[var_id]['flags'].append(rest[d*8+5:d*8+8])
     f.close()
     
@@ -99,8 +111,7 @@ def get_OBS(station, variable_id):
         return None
     
     df = read_csv(os.path.join(full_path,'%s.csv') %(variable_id) )
-    df = np.where(df.flags.values != '  0', np.NAN, df)
-    # format: index, temp, flag, datetime
+    # format: index, variable, flag, datetime
     return df
     
     
