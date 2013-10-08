@@ -171,82 +171,46 @@ def parse_mos(filename):
     return tmax, tmin
     
 
-def parse_observations(filename, station_name=None):
-    ## Use pandas' csv reader to quickly read the observational dataset into a
-    ## managable format
-    data = read_csv(filename)
-    if station_name:
-        data = data[data.STATION_NAME == station_name]
+def parse_observations(station_name):
+    '''Finds and collects the observational data for the station of interest
+    returns variable_data, core DataFrames
+    '''
 
     ## Grab station metadata
-    station_id = data.STATION.values[0]
-    elevation = data.ELEVATION.values[0]
-    latitude = data.LATITUDE.values[0]
-    longitude = data.LONGITUDE.values[0]
+#    station_id = data.STATION.values[0]
+#    elevation = data.ELEVATION.values[0]
+#    latitude = data.LATITUDE.values[0]
+#    longitude = data.LONGITUDE.values[0]
 
-    ## Grab station dates and format them as indices for the new, parsed data
-    raw_dates = data.DATE
-    dates = []
-    for date in raw_dates:
-        date = str(date)
-        yy, mm, dd = map(int, [date[:4], date[4:6], date[6:8]])
-        dates.append(datetime.datetime(yy, mm, dd))
-
-    ## Iterate over the columns and generate a DataFrame for each type of data
-    columns = data.columns[6:]
-    num_vars = len(columns)/5
     variable_data = {}
-    for i in xrange(num_vars):
-        var_index = i*5
-        var_name = columns[var_index]
-        print var_name
-        #if var_name != 'TMAX': continue
-        var_data = data[columns[var_index]].values
 
-        measurement_flag = data[columns[var_index+1]].values
-        quality_flag = data[columns[var_index+2]].values
-        source_flag = data[columns[var_index+3]].values
-        time_of_obs = data[columns[var_index+4]].values
+    var_names = ['TMAX', 'TMIN', 'PRCP']    
+    for var_name in var_names:
+        variable_data[var_name] = get_OBS(station_name, var_name)
 
-        ## Deal with missing and flagged data
-        # 1) Missing - replace all missing values with nulls
-        #var_data = np.ma.masked_equal(var_data, MISSING)
-        # 2) Replace any quality-flagged values with nulls
-        #var_data[quality_flag != ' '] = np.nan
-
-        ## Construct the DataFrame
-        data_df = DataFrame({'data': var_data, 'meas_flag': measurement_flag,
-            'qual_flag': quality_flag, 'src_flag': source_flag}, index=dates)
-
-        variable_data[var_name] = data_df
-
-    ## Take the core fields and convert them to the appropriate units
-    # SNOW: mm, N/A
-    # SNWD: mm, N/A
-    # PRCP: tenths of mm -> mm (PRCP/10.)
-    # TMAX/TMIN: tenths of deg C -> deg F
-    #(9/5)*Tc+32
-    core_df_fields = {'SNOW': variable_data['SNOW'].data,
-                      'SNWD': variable_data['SNWD'].data,
-                      'TMAX': (9./5.)*(variable_data['TMAX'].data/10.) + 32.,
-                      'TMIN': (9./5.)*(variable_data['TMIN'].data/10.) + 32.,
-                      'PRCP': variable_data['PRCP'].data/10.}
+    core_df_fields = {}
+    for var_name in var_names:
+        core_df_fields[var_name] = variable_data[var_name].data
     core = DataFrame(core_df_fields)
+    core.index = [datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') for 
+                    x in core.index]
+    
     return variable_data, core
 
 if __name__ == "__main__":
 
     id = sys.argv[1]
 
-    station_name = STATIONS[id]
-    print station_name
-    variable_data, core = parse_observations("%s_daily_obs.csv" % id, station_name)
+#    station_name = STATIONS[id]
+#    print station_name
+    variable_data, core = parse_observations(id)
 
     tmaxes, tmins = [], []
     for date in core.index:
         # Decrement the day by "1" - we want to grab the MOS forecast from the *previous day*
         # since this is the observation to validate it.
         date = date-ONE_DAY
+        print date
         filename = "data_arch/%s/%s.%02d%02d%04d.GFS-MAV.18Z" % (id, id, date.month, date.day, date.year)
         try:
             tmin, tmax = parse_mos(filename)
