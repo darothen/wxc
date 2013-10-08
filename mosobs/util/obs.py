@@ -16,8 +16,6 @@ STATIONS = { 'ksdf': 'LOUISVILLE INTERNATIONAL AIRPORT KY US',
 
 # 1 day timedelta
 ONE_DAY = datetime.timedelta(days=1)
-# 12 hour timedelta
-H12 = datetime.timedelta(hours = 12)
 
 # NWSO location closest to each station?
 STATION_CODES = { 'khou': 'USC00414333',
@@ -129,7 +127,7 @@ def choose_OBS(obsdf, dtime_start, dtime_end=None, flag=False):
     if dtime_end:
         str_end = dtime_end.isoformat().replace('T', ' ')
     else:
-        str_end = (dtime_start+H12).isoformat().replace('T', ' ')
+        str_end = str_start
     i0 = obsdf['Unnamed: 0'][str_start]
 
     if dtime_end:
