@@ -16,6 +16,8 @@ STATIONS = { 'ksdf': 'LOUISVILLE INTERNATIONAL AIRPORT KY US',
 
 # 1 day timedelta
 ONE_DAY = datetime.timedelta(days=1)
+# 12 hour timedelta
+H12 = datetime.timedelta(hours = 12)
 
 # NWSO location closest to each station?
 STATION_CODES = { 'khou': 'USC00414333',
@@ -110,9 +112,35 @@ def get_OBS(station, variable_id):
         print 'No archived OBS data for this station'
         return None
     
-    df = read_csv(os.path.join(full_path,'%s.csv') %(variable_id) )
+    df = read_csv(os.path.join(full_path,'%s.csv') %(variable_id) , index_col='t')
     # format: index, variable, flag, datetime
+        
     return df
+    
+
+def choose_OBS(obsdf, dtime_start, dtime_end=None, flag=False):
+    '''Choose subset of total obs record according to dtime_start and dtime_end
+    dtime are datetime.datetime objects
+    If no dtime_end, returns single element array
+    If flag set to True, return a 2d array with [data, flag] sets
+    '''
+
+    str_start = dtime_start.isoformat().replace('T', ' ')
+    if dtime_end:
+        str_end = dtime_end.isoformat().replace('T', ' ')
+    else:
+        str_end = (dtime_start+H12).isoformat().replace('T', ' ')
+    i0 = obsdf['Unnamed: 0'][str_start]
+
+    if dtime_end:
+        i1 = obsdf['Unnamed: 0'][str_end]
+    else:
+        i1 = i0
+
+    if flag:
+        return obsdf.values[i0:i1+1, 1:3]
+    else:
+        return obsdf.values[i0:i1+1, 1]
     
     
 def parse_mos(filename):
