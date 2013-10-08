@@ -201,6 +201,8 @@ if __name__ == "__main__":
 
     id = sys.argv[1]
 
+    # make sure obs data is downloaded
+    fetch_OBS(id, update = False)
 #    station_name = STATIONS[id]
 #    print station_name
     variable_data, core = parse_observations(id)
