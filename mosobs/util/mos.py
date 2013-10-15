@@ -385,7 +385,7 @@ def concatenate_MOS(station, forecast_date, gfs=True, nam=True):
         
     """
     mos_pattern = "%s.%02d%02d%4d.%s.%02dZ" # station, mm, dd, yyyy, model, hh
-    one_day = timedelta(days=1)
+    one_day = datetime.timedelta(days=1)
     
     ## Generate filenames of MOS data to read
     model_date = forecast_date - one_day
