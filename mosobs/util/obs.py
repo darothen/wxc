@@ -23,6 +23,7 @@ STATION_CODES = { 'khou': 'USC00414333',
                   'nrmn': 'USC00346382', 
                   'kgrr': 'USC00203337',
                   'nrmn': 'USC00346382',
+                  'kokc': 'USW00013967',
                   }
 
 def code_from_station(station):
