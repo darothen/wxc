@@ -355,7 +355,7 @@ def process_MOS(lines):
 
     return df
 
-def concatenate_MOS(station, forecast_date, gfs=True, nam=True):
+def concatenate_MOS(station, forecast_date, gfs=True, nam=True, print_debug=False):
     """ Concatenate MOS forecasts from GFS and NAM corresponding to
     a given forecast date.
     
@@ -401,11 +401,13 @@ def concatenate_MOS(station, forecast_date, gfs=True, nam=True):
     for hour, model in combos:
         filename = mos_pattern % (station, md.month, md.day, md.year,
                                   full_model_name[model], hour)
-        print "Processing", filename
+        if print_debug:
+            print "Processing", filename
         
         full_path = os.path.join(data_path, station, model, filename)
         if not os.path.exists(full_path):
-            print "   could not find file; skipping"
+            if print_debug:
+                print "   could not find file; skipping"
             continue
             
         model_fcst_date = datetime.datetime(md.year, md.month, md.day, hour)
