@@ -1,30 +1,13 @@
-import sys
-import numpy as np
-import datetime
-import os
-from pandas import *
-from pylab import *
+import os, sys
 from urllib2 import HTTPError
+
+import pandas as pd
+import numpy as np
+
+from data import STATION_CODES, ONE_DAY
 from mos import download_file, data_path
-ion()
 
-## Pre-defined flags
-MISSING = 9999
 
-STATIONS = { 'ksdf': 'LOUISVILLE INTERNATIONAL AIRPORT KY US',
-             'ksyr': 'SYRACUSE HANCOCK INTERNATIONAL AIRPORT NY US', }
-
-# 1 day timedelta
-ONE_DAY = datetime.timedelta(days=1)
-
-# NWSO location closest to each station?
-STATION_CODES = { 'khou': 'USC00414333',
-                  'kcys': 'USC00481676',
-                  'nrmn': 'USC00346382', 
-                  'kgrr': 'USC00203337',
-                  'nrmn': 'USC00346382',
-                  'kokc': 'USW00013967',
-                  }
 
 def code_from_station(station):
     # translate 4 letter station id to hcn code
@@ -55,7 +38,7 @@ def fetch_OBS(station, update='True'):
         try:
             download_file(link, full_fn)
             print "done"
-        except HTTPError, e:
+        except HTTPError:
             print "...resource not found. Skipping."
 
     f = open(full_fn)
@@ -73,7 +56,7 @@ def fetch_OBS(station, update='True'):
             rest = line[21:]
             for d in range(31):
                 try: 
-                    dt = datetime.datetime(int(yyyy),int(mm),int(d+1))
+                    dt = pd.datetime(int(yyyy),int(mm),int(d+1))
                 except ValueError:
                     break
                 obs_data[var_id]['t'].append(dt)   
@@ -97,7 +80,7 @@ def fetch_OBS(station, update='True'):
     
     ## archive data by variable ID
     for var_id in obs_data:
-        df = DataFrame(obs_data[var_id])
+        df = pd.DataFrame(obs_data[var_id])
         df.to_csv(os.path.join(full_path,'%s.csv') %(var_id) )
 
 
@@ -112,7 +95,7 @@ def get_OBS(station, variable_id):
         print 'No archived OBS data for this station'
         return None
     
-    df = read_csv(os.path.join(full_path,'%s.csv') %(variable_id) , index_col='t')
+    df = pd.read_csv(os.path.join(full_path,'%s.csv') %(variable_id) , index_col='t')
     # format: index, variable, flag, datetime
         
     return df
@@ -150,8 +133,6 @@ def parse_mos(filename):
     """
     mos_file = open(filename, 'r')
     lines = mos_file.readlines()
-
-    forecast_data = {}
 
     ## Split the lines for further processing
     header = lines[0]
@@ -193,9 +174,8 @@ def parse_observations(station_name):
     core_df_fields = {}
     for var_name in var_names:
         core_df_fields[var_name] = variable_data[var_name].data
-    core = DataFrame(core_df_fields)
-    core.index = [datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') for 
-                    x in core.index]
+    core = pd.DataFrame(core_df_fields)
+    core.index = [pd.datetime.strptime(x, '%Y-%m-%d %H:%M:%S') for x in core.index]
     
     return variable_data, core
 
@@ -223,7 +203,7 @@ if __name__ == "__main__":
             tmin, tmax = None, None
         tmaxes.append(tmax)
         tmins.append(tmin)
-    mos = DataFrame({'TMAX': tmaxes, 'TMIN': tmins}, index=core.index)
+    mos = pd.DataFrame({'TMAX': tmaxes, 'TMIN': tmins}, index=core.index)
 
     ## group by month
     mos_grouped = mos.groupby([lambda x: x.year, lambda x: x.month])
