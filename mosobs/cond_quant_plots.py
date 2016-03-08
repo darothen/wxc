@@ -1,5 +1,9 @@
 """
 Constructs conditional-quantile plots for evaluating MOS forecast accuracy and calibration
+
+ref: 
+    - Wilks met stats (Section 7.3.)
+    - Murphy et al, 1989. "Diagnostic verification of temperature forecasts". Weather and Forecasting
 """
 import numpy as np
 import pandas as pd
@@ -13,21 +17,22 @@ import sys, time
 #model_keys = ["GFS00Z", "GFS06Z", "GFS12Z", "GFS18Z", "NAM00Z", "NAM12Z"]
 model_keys = ["GFS12Z", "GFS18Z", "NAM12Z"]
 
-station = "KOKC"
+station = "KCON"
+field = "TMAX"
 vd, core = parse_observations(station)
 
 ## Subset the observational data. As an example, choose all
 ## October data
-core_ss = core[(core.index.month == 10) | (core.index.month == 11)]
+core_ss = core[(core.index.month == 12) | (core.index.month == 11)]
 
 
 dates = core_ss.index
 valid_dates = []
-fcst_tmaxes = dict()
+fcst_fields = dict()
 for key in model_keys:
-    fcst_tmaxes[key] = []
+    fcst_fields[key] = []
 
-print fcst_tmaxes
+print fcst_fields
 
 for i, d in enumerate(dates):
    sys.stdout.write("\r%2.1f%%" % (100.*float(i)/len(dates)))
@@ -41,15 +46,15 @@ for i, d in enumerate(dates):
    valid_dates.append(d)
    for key in model_keys:
         try:
-            mos_maxmin = mos_fcst[key].maxmins[d]['max']
-            fcst_tmaxes[key].append(mos_maxmin)
+            mos_maxmin = mos_fcst[key].maxmins[d][field]
+            fcst_fields[key].append(mos_maxmin)
         except KeyError:
-            fcst_tmaxes[key].append(np.nan)
+            fcst_fields[key].append(np.nan)
        
-obs_tmaxes = np.floor(core_ss['TMAX'].ix[valid_dates])
-fcst_tmaxes.update({'obs': obs_tmaxes})
+obs_fields = np.floor(core_ss[field].ix[valid_dates])
+fcst_fields.update({'obs': obs_fields})
 
-data = pd.DataFrame(fcst_tmaxes)      
+data = pd.DataFrame(fcst_fields)      
 
 ################################
 for model in model_keys:
@@ -123,5 +128,5 @@ for model in model_keys:
     ax.set_xlabel("Forecast Temperature ($^o$F)")
     ax.set_ylabel("Observed Temperature ($^o$F)")
 
-    ax.set_title("%s - %s" % (model, station), loc="left")
-    savefig("%s.%s.pdf" % (station, model), transparent=True, bbox_inches="tight")
+    ax.set_title("%s - %s - %s" % (model, station, field), loc="left", color="#555555")
+    savefig("%s.%s.%s.pdf" % (station, model, field), transparent=True, bbox_inches="tight")

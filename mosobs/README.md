@@ -15,7 +15,7 @@ The other scripts provide some functionality for parsing the MOS blocks (incompl
 #### Dependencies
 
 - [pandas][]
-- numpy
+- NumPy
 - matplotlib (optional; default library for plotting utilities)
 - iPython (for notebooks, parallelization of downloading/analysis)
 

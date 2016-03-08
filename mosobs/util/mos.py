@@ -326,15 +326,15 @@ def process_MOS(lines):
     maxmins = OrderedDict()
     if fcst_datetime.hour < 12:
         day0, day1, day2, day3 = cds
-        maxmins[day0] = {'max': minmax[0]}
-        maxmins[day1] = {'min': minmax[1], 'max': minmax[2]}
-        maxmins[day2] = {'min': minmax[3], 'max': minmax[4]}
+        maxmins[day0] = {'TMAX': minmax[0]}
+        maxmins[day1] = {'TMIN': minmax[1], 'TMAX': minmax[2]}
+        maxmins[day2] = {'TMIN': minmax[3], 'TMAX': minmax[4]}
     elif fcst_datetime.hour >= 12:
         if fcst_datetime.hour == 12: day0, day1, day2, day3 = cds
         if fcst_datetime.hour == 18: day1, day2, day3 = cds
-        maxmins[day1] = {'min': minmax[0], 'max': minmax[1]}
-        maxmins[day2] = {'min': minmax[2], 'max': minmax[3]}
-        maxmins[day3] = {'min': minmax[4]}
+        maxmins[day1] = {'TMIN': minmax[0], 'TMAX': minmax[1]}
+        maxmins[day2] = {'TMIN': minmax[2], 'TMAX': minmax[3]}
+        maxmins[day3] = {'TMIN': minmax[4]}
     df.maxmins = maxmins
 
     ## Map the 12hr POP/QPF forecasts to their appropriate dates (shift them to the *beginning*)
